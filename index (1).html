@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Family Ping</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --accent: #e94560;
+      --success: #0f3460;
+      --text: #eee;
+      --text-muted: #8892a4;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Sender selection */
+    .sender-select {
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 24px;
+    }
+
+    .sender-select label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .sender-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .sender-btn {
+      flex: 1;
+      padding: 12px 8px;
+      border: 2px solid var(--success);
+      background: transparent;
+      color: var(--text);
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sender-btn.active {
+      background: var(--success);
+      transform: scale(1.02);
+    }
+
+    .sender-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Ping buttons grid */
+    .ping-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .ping-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+      min-height: 110px;
+    }
+
+    .ping-btn .emoji {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .ping-btn:active {
+      transform: scale(0.93);
+      filter: brightness(1.15);
+    }
+
+    .ping-btn.sending {
+      animation: pulse 0.6s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.92); }
+      60% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .ping-btn.sent::after {
+      content: '✓';
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 18px;
+      color: rgba(255,255,255,0.8);
+      animation: fadeInOut 2s ease forwards;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Color variants */
+    .ping-btn.red    { background: linear-gradient(135deg, #e94560, #c23152); color: #fff; }
+    .ping-btn.blue   { background: linear-gradient(135deg, #0f3460, #1a5276); color: #fff; }
+    .ping-btn.green  { background: linear-gradient(135deg, #1b8a5a, #27ae60); color: #fff; }
+    .ping-btn.orange { background: linear-gradient(135deg, #e67e22, #d35400); color: #fff; }
+    .ping-btn.purple { background: linear-gradient(135deg, #8e44ad, #6c3483); color: #fff; }
+    .ping-btn.teal   { background: linear-gradient(135deg, #16a085, #1abc9c); color: #fff; }
+
+    /* Full-width button */
+    .ping-btn.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* Settings panel */
+    .settings-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--success);
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-panel {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .settings-panel.open {
+      display: flex;
+    }
+
+    .settings-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 380px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .settings-card h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+
+    .settings-card label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      margin-top: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .settings-card input, .settings-card textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #334;
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      font-family: monospace;
+    }
+
+    .settings-card input:focus, .settings-card textarea:focus {
+      outline: 2px solid var(--accent);
+      border-color: transparent;
+    }
+
+    .settings-card textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .settings-actions button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-cancel {
+      background: #334;
+      color: var(--text);
+    }
+
+    /* Install banner */
+    .install-banner {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card);
+      padding: 16px 20px;
+      text-align: center;
+      z-index: 150;
+      border-top: 1px solid #334;
+    }
+
+    .install-banner.show {
+      display: block;
+    }
+
+    .install-banner button {
+      margin-top: 10px;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Status indicator */
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .status-dot.online  { background: #2ecc71; }
+    .status-dot.offline { background: #e74c3c; }
+
+    .connection-status {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🔔 Family Ping</h1>
+    <p>Appuie sur un bouton, la famille est prévenue</p>
+  </div>
+
+  <div class="connection-status">
+    <span class="status-dot online" id="statusDot"></span>
+    <span id="statusText">Connecté</span>
+  </div>
+
+  <!-- Sender selection -->
+  <div class="sender-select">
+    <label>Qui es-tu ?</label>
+    <div class="sender-buttons" id="senderButtons">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Ping buttons -->
+  <div class="ping-grid" id="pingGrid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Settings button -->
+  <button class="settings-toggle" id="settingsToggle">⚙️</button>
+
+  <!-- Settings panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-card">
+      <h2>⚙️ Configuration</h2>
+
+      <label>Topic ntfy (identifiant secret)</label>
+      <input type="text" id="cfgTopic" placeholder="fam-ping-votre-code-secret">
+
+      <label>Noms des expéditeurs (JSON)</label>
+      <textarea id="cfgSenders" placeholder='["Papa", "Maman"]'></textarea>
+
+      <label>Boutons (JSON)</label>
+      <textarea id="cfgButtons" placeholder='[{"emoji":"🍽️","label":"Viens manger","color":"red"},{"emoji":"📞","label":"Appelle-moi","color":"blue"}]'></textarea>
+
+      <div class="settings-actions">
+        <button class="btn-cancel" id="btnCancel">Annuler</button>
+        <button class="btn-save" id="btnSave">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install banner -->
+  <div class="install-banner" id="installBanner">
+    <p>Installe l'app sur ton écran d'accueil !</p>
+    <button id="installBtn">Installer</button>
+  </div>
+
+<script>
+// ============================================================
+// DEFAULT CONFIGURATION — Modify here or via the settings panel
+// ============================================================
+const DEFAULT_CONFIG = {
+  topic: "fam-ping-change-moi-2025",   // ⚠️ CHANGE THIS to something unique!
+  ntfyServer: "https://ntfy.sh",
+  senders: ["Papa", "Maman"],
+  buttons: [
+    { emoji: "🍽️", label: "Viens manger",     color: "red"    },
+    { emoji: "📞", label: "Appelle-moi",       color: "blue"   },
+    { emoji: "🆘", label: "J'ai besoin d'aide", color: "orange" },
+    { emoji: "👋", label: "Coucou",            color: "green"  },
+    { emoji: "💊", label: "C'est l'heure",     color: "purple" },
+    { emoji: "❤️", label: "Je t'aime",         color: "teal"   }
+  ]
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let config = {};
+let selectedSender = "";
+let deferredPrompt = null;
+
+// ============================================================
+// INIT
+// ============================================================
+function loadConfig() {
+  try {
+    const saved = localStorage.getItem("familyPingConfig");
+    if (saved) {
+      config = JSON.parse(saved);
+      // Merge with defaults for any missing keys
+      config = { ...DEFAULT_CONFIG, ...config };
+    } else {
+      config = { ...DEFAULT_CONFIG };
+    }
+  } catch {
+    config = { ...DEFAULT_CONFIG };
+  }
+  selectedSender = localStorage.getItem("familyPingSender") || config.senders[0] || "";
+}
+
+function saveConfig() {
+  localStorage.setItem("familyPingConfig", JSON.stringify(config));
+}
+
+function saveSender() {
+  localStorage.setItem("familyPingSender", selectedSender);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderSenders() {
+  const container = document.getElementById("senderButtons");
+  container.innerHTML = "";
+  config.senders.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = "sender-btn" + (name === selectedSender ? " active" : "");
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      selectedSender = name;
+      saveSender();
+      renderSenders();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function renderButtons() {
+  const grid = document.getElementById("pingGrid");
+  grid.innerHTML = "";
+  config.buttons.forEach((btn, idx) => {
+    const el = document.createElement("button");
+    el.className = `ping-btn ${btn.color}`;
+    // Make the last button full-width if odd count
+    if (idx === config.buttons.length - 1 && config.buttons.length % 2 !== 0) {
+      el.classList.add("full-width");
+    }
+    el.innerHTML = `<span class="emoji">${btn.emoji}</span>${btn.label}`;
+    el.addEventListener("click", () => sendPing(btn, el));
+    grid.appendChild(el);
+  });
+}
+
+// ============================================================
+// SEND PING
+// ============================================================
+async function sendPing(btn, el) {
+  if (!selectedSender) {
+    alert("Sélectionne d'abord qui tu es !");
+    return;
+  }
+
+  const message = `${selectedSender} : ${btn.label}`;
+
+  // Visual feedback
+  el.classList.add("sending");
+  setTimeout(() => {
+    el.classList.remove("sending");
+    el.classList.add("sent");
+    setTimeout(() => el.classList.remove("sent"), 2000);
+  }, 600);
+
+  try {
+    const response = await fetch(`${config.ntfyServer}/${config.topic}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Title": "Family Ping",
+        "Priority": "high",
+        "Tags": "bell"
+      },
+      body: message
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    updateStatus(true);
+  } catch (err) {
+    console.error("Failed to send ping:", err);
+    updateStatus(false);
+    // Retry once after 2 seconds
+    setTimeout(async () => {
+      try {
+        await fetch(`${config.ntfyServer}/${config.topic}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Title": "Family Ping",
+            "Priority": "high",
+            "Tags": "bell"
+          },
+          body: message
+        });
+        updateStatus(true);
+      } catch {
+        updateStatus(false);
+      }
+    }, 2000);
+  }
+}
+
+// ============================================================
+// CONNECTION STATUS
+// ============================================================
+function updateStatus(online) {
+  const dot = document.getElementById("statusDot");
+  const text = document.getElementById("statusText");
+  dot.className = "status-dot " + (online ? "online" : "offline");
+  text.textContent = online ? "Connecté" : "Hors ligne — vérifie le WiFi";
+}
+
+// Online/offline detection
+window.addEventListener("online", () => updateStatus(true));
+window.addEventListener("offline", () => updateStatus(false));
+
+// ============================================================
+// SETTINGS PANEL
+// ============================================================
+function openSettings() {
+  document.getElementById("cfgTopic").value = config.topic;
+  document.getElementById("cfgSenders").value = JSON.stringify(config.senders, null, 2);
+  document.getElementById("cfgButtons").value = JSON.stringify(config.buttons, null, 2);
+  document.getElementById("settingsPanel").classList.add("open");
+}
+
+function closeSettings() {
+  document.getElementById("settingsPanel").classList.remove("open");
+}
+
+function applySettings() {
+  try {
+    const topic = document.getElementById("cfgTopic").value.trim();
+    const senders = JSON.parse(document.getElementById("cfgSenders").value);
+    const buttons = JSON.parse(document.getElementById("cfgButtons").value);
+
+    if (!topic || !Array.isArray(senders) || !Array.isArray(buttons)) {
+      throw new Error("Format invalide");
+    }
+
+    config.topic = topic;
+    config.senders = senders;
+    config.buttons = buttons;
+    selectedSender = senders[0];
+    saveConfig();
+    saveSender();
+    renderSenders();
+    renderButtons();
+    closeSettings();
+  } catch (err) {
+    alert("Erreur dans la configuration : " + err.message);
+  }
+}
+
+document.getElementById("settingsToggle").addEventListener("click", openSettings);
+document.getElementById("btnCancel").addEventListener("click", closeSettings);
+document.getElementById("btnSave").addEventListener("click", applySettings);
+
+// Close settings by clicking backdrop
+document.getElementById("settingsPanel").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("settingsPanel")) closeSettings();
+});
+
+// ============================================================
+// PWA INSTALL
+// ============================================================
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById("installBanner").classList.add("show");
+});
+
+document.getElementById("installBtn").addEventListener("click", async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    console.log("Install result:", result.outcome);
+    deferredPrompt = null;
+    document.getElementById("installBanner").classList.remove("show");
+  }
+});
+
+// Register service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(err => {
+    console.log("SW registration failed:", err);
+  });
+}
+
+// ============================================================
+// BOOTSTRAP
+// ============================================================
+loadConfig();
+renderSenders();
+renderButtons();
+updateStatus(navigator.onLine);
+</script>
+
+</body>
+</html>
